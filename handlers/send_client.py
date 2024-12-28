@@ -31,5 +31,5 @@ async def send_all_products(call: types.CallbackQuery):
 
 
 def register_handlers(dp: Dispatcher):
-    dp.register_message_handler(start_send_clients, commands=['products'])
+    dp.register_message_handler(start_send_clients, commands=['client'])
     dp.register_callback_query_handler(send_all_products, Text(equals='send_all_products'))

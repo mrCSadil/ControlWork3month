@@ -8,8 +8,8 @@ from db import main_db
 
 
 async def on_startup(dp):
-    for admin in Staff:
-        await bot.send_message(chat_id=admin, text='Бот включен!',
+    for staff in Staff:
+        await bot.send_message(chat_id=staff, text='Бот включен!',
                                reply_markup=buttons.start_markup)
     await main_db.DataBase_create()
 

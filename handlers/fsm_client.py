@@ -3,7 +3,7 @@ from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher.filters.state import State, StatesGroup
 import buttons
 from aiogram.dispatcher import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardButton,  InlineKeyboardMarkup
 from db import main_db
 from config import Staff, bot
 
@@ -14,6 +14,7 @@ class client_fsm(StatesGroup):
     quantity = State()
     number = State()
     submit = State()
+    send_to_staff = State()
 
 async def start_client_fsm (message: types.Message):
     await message.answer('Enter product article: ',
@@ -45,15 +46,13 @@ async def load_number(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['number'] = message.text
 
-    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.add(KeyboardButton(text="yes"), KeyboardButton(text="no"))
-
-    await message.answer_photo(photo=data['photo'],
-                               caption=f'Артикул - {data["product_id"]}\n'
+    keyboard1 = ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard1.add(KeyboardButton(text="yes"), KeyboardButton(text="no"))
+    await message.answer(f'Артикул - {data["product_id"]}\n'
                                        f'Размер - {data["size"]}\n'
                                        f'Количество - {data["quantity"]}\n'
                                        f'Personal number - {data["number"]}\n')
-    await message.answer(f"Все верно?", reply_markup=keyboard)
+    await message.answer(f"Все верно?", reply_markup=keyboard1)
     await client_fsm.next()
 
 async def load_submit(message: types.Message, state: FSMContext):
@@ -65,17 +64,10 @@ async def load_submit(message: types.Message, state: FSMContext):
                 quantity=data['quantity'],
                 number=data['number']
             )
-            clients = main_db.sql_get_all_clients()
 
-            if message.from_user.id in Staff :
-                for client in clients:
-                    caption = (f'Артикул - {client["product_id"]}\n'
-                                f'quantity - {client["quantity"]}\n'
-                                f'size - {client["size"]}\n'
-                                f'number - {client["number"]}\n'
-                                )
+        await client_fsm.next()
+        await client_fsm.send_to_staff.set()
 
-                await bot.send_message(caption=caption)
 
     elif message.text.lower().strip() == 'no':
         await message.answer('It was cancelled.', reply_markup=buttons.start_markup)
@@ -87,11 +79,27 @@ async def load_submit(message: types.Message, state: FSMContext):
 
 async def cancel_fsm(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
-
     if current_state is not None:
-        await state.finish()
-        await message.answer('Have been cancelled!', reply_markup=buttons.start_markup)
 
+            await state.finish()
+            await message.answer('Have been cancelled!', reply_markup=buttons.start_markup)
+
+async def send_to_staff(call: types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        for staff in Staff:
+            try:
+                await call.bot.send_message(
+                    staff,
+                    f'Артикул - {data["product_id"]}\n'
+                    f'Размер - {data["size"]}\n'
+                    f'Количество - {data["quantity"]}\n'
+                    f'Personal number - {data["number"]}\n'
+                )
+            except Exception as e:
+                await call.message.answer(f"Failed to send to {staff}: {e}")
+
+    await call.message.answer("successfuly was sent to staff!", reply_markup=buttons.start_markup)
+    await state.finish()
 
 def register_fsm_client_handlers(dp: Dispatcher):
     dp.register_message_handler(start_client_fsm, commands=["buy"])
@@ -100,3 +108,5 @@ def register_fsm_client_handlers(dp: Dispatcher):
     dp.register_message_handler(load_quantity, state=client_fsm.quantity)
     dp.register_message_handler(load_number, state=client_fsm.number)
     dp.register_message_handler(load_submit, state=client_fsm.submit)
+    dp.register_callback_query_handler(send_to_staff, state=client_fsm.send_to_staff)
+

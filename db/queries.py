@@ -1,5 +1,5 @@
 CREATE_TABLE_products = """
-    CREATE TABLE products IF NOT EXISTS products (
+    CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name text,
     size text,
@@ -18,7 +18,7 @@ INSERT_products_QUERY = """
 
 
 CREATE_TABLE_client = """
-    CREATE TABLE clients IF NOT EXISTS clients (
+    CREATE TABLE IF NOT EXISTS client (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_id text,
     size text,
